@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 DB_PATH = "knowledge_base.db"
 SIMILARITY_THRESHOLD = 0.59
 MAX_RESULTS = 30
-MAX_CONTEXT_CHUNKS = 16
+MAX_CONTEXT_CHUNKS = 32
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 
