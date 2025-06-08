@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 DB_PATH = "knowledge_base.db"
-SIMILARITY_THRESHOLD = 0.68
+SIMILARITY_THRESHOLD = 0.59
 MAX_RESULTS = 15
 MAX_CONTEXT_CHUNKS = 4
 load_dotenv()
