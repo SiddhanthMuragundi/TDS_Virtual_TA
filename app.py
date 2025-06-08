@@ -15,24 +15,31 @@ from fastapi.responses import JSONResponse
 import uvicorn
 from dotenv import load_dotenv
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) Configure logging (DEBUG level for visibility)
+# ─────────────────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) Constants and environment loading
+# ─────────────────────────────────────────────────────────────────────────────
 DB_PATH = "knowledge_base.db"
-SIMILARITY_THRESHOLD = 0.55
-MAX_RESULTS = 50
-MAX_CONTEXT_CHUNKS = 16
+SIMILARITY_THRESHOLD = 0.68
+MAX_RESULTS = 15
+MAX_CONTEXT_CHUNKS = 4
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 
 if not API_KEY:
     logger.error("API_KEY environment variable is not set. The application will not function correctly.")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 3) Pydantic models
+# ─────────────────────────────────────────────────────────────────────────────
 class QueryRequest(BaseModel):
     question: str
     image: Optional[str] = None  # Base64 encoded image
@@ -45,7 +52,9 @@ class QueryResponse(BaseModel):
     answer: str
     links: List[LinkInfo]
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 4) Initialize FastAPI app
+# ─────────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="RAG Query API", description="API for querying the RAG knowledge base")
 
 app.add_middleware(
@@ -56,7 +65,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 5) Database setup / migrations
+# ─────────────────────────────────────────────────────────────────────────────
 def get_db_connection():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -68,7 +79,7 @@ def get_db_connection():
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
 
-
+# If DB file does not exist, create tables. Otherwise, ensure the column exists.
 if not os.path.exists(DB_PATH):
     logger.debug("Database file not found. Creating new SQLite database with required tables.")
     conn = sqlite3.connect(DB_PATH)
@@ -113,6 +124,9 @@ else:
         logger.debug("reply_to_post_number column already exists, skipping ALTER TABLE.")
     conn.close()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 6) Cosine similarity helper
+# ─────────────────────────────────────────────────────────────────────────────
 def cosine_similarity(vec1, vec2):
     try:
         vec1 = np.array(vec1)
@@ -130,7 +144,9 @@ def cosine_similarity(vec1, vec2):
         logger.error(traceback.format_exc())
         return 0.0
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 7) Function to get embedding from AIPipe proxy (with retries)
+# ─────────────────────────────────────────────────────────────────────────────
 async def get_embedding(text, max_retries=3):
     if not API_KEY:
         error_msg = "API_KEY environment variable not set"
@@ -175,6 +191,9 @@ async def get_embedding(text, max_retries=3):
                 raise HTTPException(status_code=500, detail=error_msg)
             await asyncio.sleep(3 * retries)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 8) Find similar content in both tables (discourse + markdown)
+# ─────────────────────────────────────────────────────────────────────────────
 async def find_similar_content(query_embedding, conn):
     try:
         logger.debug("Finding similar content in database.")
@@ -281,7 +300,9 @@ async def find_similar_content(query_embedding, conn):
         logger.error(traceback.format_exc())
         raise
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 9) New: fetch replies for a given post_number (all chunks of each reply)
+# ─────────────────────────────────────────────────────────────────────────────
 def fetch_replies_for_post(conn: sqlite3.Connection, topic_id: int, post_number: int) -> List[Dict[str, Any]]:
     """
     Given a topic_id and a post_number, return all reply‐posts’ combined content
@@ -337,7 +358,9 @@ def fetch_replies_for_post(conn: sqlite3.Connection, topic_id: int, post_number:
 
     return replies
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 10) Enrich content with adjacent chunks and replies (uses new fetch_replies_for_post)
+# ─────────────────────────────────────────────────────────────────────────────
 async def enrich_with_adjacent_chunks(conn, results):
     try:
         logger.debug(f"enrich_with_adjacent_chunks called with {len(results)} result(s).")
@@ -446,7 +469,9 @@ async def enrich_with_adjacent_chunks(conn, results):
         logger.error(traceback.format_exc())
         raise
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 11) Generate an answer via LLM (with sources)
+# ─────────────────────────────────────────────────────────────────────────────
 async def generate_answer(question, relevant_results, max_retries=2):
     if not API_KEY:
         error_msg = "API_KEY environment variable not set"
@@ -520,6 +545,9 @@ Make sure the URLs are copied exactly from the context without any changes.
                 raise HTTPException(status_code=500, detail=error_msg)
             await asyncio.sleep(2)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 12) Process multimodal query (text + optional image)
+# ─────────────────────────────────────────────────────────────────────────────
 async def process_multimodal_query(question, image_base64):
     if not API_KEY:
         error_msg = "API_KEY environment variable not set"
@@ -568,6 +596,9 @@ async def process_multimodal_query(question, image_base64):
         logger.debug("Falling back to text-only embedding due to exception.")
         return await get_embedding(question)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 13) Parse LLM response (extract answer + sources)
+# ─────────────────────────────────────────────────────────────────────────────
 def parse_llm_response(response: str) -> Dict[str, Any]:
     try:
         logger.debug("Parsing LLM response to extract answer and sources.")
@@ -620,7 +651,9 @@ def parse_llm_response(response: str) -> Dict[str, Any]:
         logger.error(traceback.format_exc())
         return {"answer": "Error parsing the response from the language model.", "links": []}
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 14) API route: /query
+# ─────────────────────────────────────────────────────────────────────────────
 @app.post("/query")
 async def query_knowledge_base(request: QueryRequest):
     try:
@@ -688,7 +721,9 @@ async def query_knowledge_base(request: QueryRequest):
         logger.error(traceback.format_exc())
         return JSONResponse(status_code=500, content={"error": error_msg})
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 15) Health check endpoint
+# ─────────────────────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health_check():
     try:
@@ -717,6 +752,8 @@ async def health_check():
         logger.error(f"Health check failed: {e}")
         return JSONResponse(status_code=500, content={"status": "unhealthy", "error": str(e), "api_key_set": bool(API_KEY)})
 
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 16) Run the server
+# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
