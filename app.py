@@ -661,11 +661,11 @@ async def index():
         "message": "Welcome to the TDS Virtual TA API",
         "links": [
             {
-                "name": "Course Content",
+                "name": "Course content with content for TDS Jan 2025 as on 15 Apr 2025",
                 "url": "https://tds.s-anand.net/#/2025-01/"
             },
             {
-                "name": "Discourse Forum – TDS KB",
+                "name": "TDS Discourse posts with content from 1 Jan 2025 - 14 Apr 2025",
                 "url": "https://discourse.onlinedegree.iitm.ac.in/c/courses/tds-kb/34"
             },
             {
