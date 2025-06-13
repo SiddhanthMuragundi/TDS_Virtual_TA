@@ -650,9 +650,42 @@ def parse_llm_response(response: str) -> Dict[str, Any]:
         logger.error(f"Error parsing LLM response: {e}")
         logger.error(traceback.format_exc())
         return {"answer": "Error parsing the response from the language model.", "links": []}
+        
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 14) API route: /query
+# 14) API Route: / – Base URL Endpoint
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/")
+async def index():
+    return {
+        "message": "Welcome to the TDS Virtual TA API",
+        "links": [
+            {
+                "name": "Course Content",
+                "url": "https://tds.s-anand.net/#/2025-01/"
+            },
+            {
+                "name": "Discourse Forum – TDS KB",
+                "url": "https://discourse.onlinedegree.iitm.ac.in/c/courses/tds-kb/34"
+            },
+            {
+                "name": "GitHub Repository",
+                "url": "https://github.com/SiddhanthMuragundi/TDS_Virtual_TA"
+            },
+            {
+                "name": "Health Check",
+                "url": "/health"
+            },
+            {
+                "name": "Query Endpoint",
+                "url": "/query"
+            }
+        ]
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 15) API route: /query
 # ─────────────────────────────────────────────────────────────────────────────
 @app.post("/query")
 async def query_knowledge_base(request: QueryRequest):
@@ -722,7 +755,7 @@ async def query_knowledge_base(request: QueryRequest):
         return JSONResponse(status_code=500, content={"error": error_msg})
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 15) Health check endpoint
+# 16) Health check endpoint
 # ─────────────────────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health_check():
@@ -753,7 +786,7 @@ async def health_check():
         return JSONResponse(status_code=500, content={"status": "unhealthy", "error": str(e), "api_key_set": bool(API_KEY)})
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 16) Run the server
+# 17) Run the server
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
