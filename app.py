@@ -658,7 +658,7 @@ def parse_llm_response(response: str) -> Dict[str, Any]:
 @app.get("/")
 async def index():
     return {
-        "message": "Welcome to the TDS Virtual TA API",
+        "message": "Welcome to the TDS Virtual TA RAG API",
         "links": [
             {
                 "name": "Course content with content for TDS Jan 2025 as on 15 Apr 2025",
