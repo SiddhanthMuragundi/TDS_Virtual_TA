@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # 2) Constants and environment loading
 # ─────────────────────────────────────────────────────────────────────────────
 DB_PATH = "knowledge_base.db"
-SIMILARITY_THRESHOLD = 0.55
+SIMILARITY_THRESHOLD = 0.59
 MAX_RESULTS = 30
 MAX_CONTEXT_CHUNKS = 10
 load_dotenv()
